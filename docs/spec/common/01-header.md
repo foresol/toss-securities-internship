@@ -116,30 +116,20 @@ const NAV_ITEMS = [
 
 ## API 연동
 
-### GET /api/stocks/search
+### `searchStocks(query: string): Promise<StockSearchResult[]>`
 
-**요청:**
+[common/02-주식데이터.md](./02-주식데이터.md)의 `src/mocks/stocks.ts`에 정의된 mock 함수를 사용한다. 백엔드 미존재 — `STOCKS` 풀에서 `name`이 `query`를 포함(대소문자 무시)하는 종목을 필터링하여 `{ stockId, name }`만 반환한다.
+
 ```typescript
-interface SearchRequest {
-  query: string;
-}
+import type { StockSearchResult } from '../../types/stock';
+
+// 응답: StockSearchResult[] (배열을 직접 반환, 래퍼 객체 없음)
 ```
 
-**응답:**
-```typescript
-import type { Stock } from '@/types/stock';
-
-export type StockSearchResult = Pick<Stock, 'stockId' | 'name'>;
-
-interface SearchResponse {
-  stocks: StockSearchResult[];
-}
-```
-
-> 검색 응답은 풀 `Stock`의 부분 집합. 향후 검색 결과에 `currentPrice`/`market` 등 컬럼이 추가되면 `Pick`에 필드를 더한다.
+> 검색 응답은 풀 `Stock`의 부분 집합. 향후 검색 결과에 `currentPrice`/`market` 등 컬럼이 추가되면 `Pick`에 필드를 더한다. 추후 실 API 교체 시 `searchStocks` 함수 본체만 바뀌고 호출부는 수정 없음.
 
 **에러 처리:**
-- 네트워크/서버 에러: 드롭다운에 `검색 중 문제가 발생했습니다.` 표시
+- mock 함수는 동기적 필터링을 `Promise.resolve`로 감싸므로 에러 발생 안 함. 단, 향후 실 API 전환을 대비해 `useQuery`의 `isError` 분기는 유지하고 드롭다운에서 `검색 중 문제가 발생했습니다.` 메시지를 노출한다.
 - 결과 없음: 드롭다운에 `검색 결과 없음` 표시
 
 ## 상태 관리
@@ -172,6 +162,8 @@ interface SearchResponse {
 src/
 ├── types/
 │   └── stock.ts           # Stock, StockSearchResult (common/02에서 정의)
+├── mocks/
+│   └── stocks.ts          # searchStocks (common/02에서 정의·관리)
 ├── components/
 │   └── Header/
 │       ├── Header.tsx
@@ -181,13 +173,13 @@ src/
 │       ├── SearchBar.tsx
 │       ├── SearchDropdown.tsx
 │       └── SearchResultItem.tsx
-├── pages/
-│   ├── HomePage.tsx
-│   ├── FeedPage.tsx
-│   └── ScreenerPage.tsx
-└── apis/
-    └── stocks.ts          # 검색 API 함수 (Stock 타입은 src/types/stock.ts에서 import)
+└── pages/
+    ├── HomePage.tsx
+    ├── FeedPage.tsx
+    └── ScreenerPage.tsx
 ```
+
+> 기존 `src/apis/stocks.ts`는 본 갱신과 함께 제거된다 (mock 통합 후 별도 API 레이어 불필요).
 
 ## 변경 이력
 
@@ -195,6 +187,7 @@ src/
 |------|------|
 | 2026-04-13 | 초안 작성 (리뷰 중) |
 | 2026-05-10 | `Stock` 타입을 [common/02-주식데이터.md](./02-주식데이터.md)와 통합. 기존 `{ id, name }`을 풀 `Stock`의 `Pick<'stockId' \| 'name'>`로 변경하여 도메인 일관성 확보. 기존 헤더 구현(`src/apis/stocks.ts`, `SearchDropdown.tsx`, `SearchBar.tsx`)도 `id` → `stockId`로 갱신 필요 |
+| 2026-05-10 | 검색 API를 mock 데이터와 통합. `/api/stocks/search` fetch를 제거하고 [common/02-주식데이터.md](./02-주식데이터.md)에 정의된 `searchStocks(query)` 함수(`src/mocks/stocks.ts`)를 호출. 응답 형태도 `{ stocks: ... }` 래퍼에서 `StockSearchResult[]` 직접 반환으로 단순화. `src/apis/stocks.ts`는 제거. SearchBar의 `data?.stocks ?? []`는 `data ?? []`로 갱신 필요 |
 
 ## 체크리스트
 
