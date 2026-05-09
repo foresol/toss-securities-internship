@@ -2,6 +2,7 @@
 
 > 기획서: [docs/planning/common/01-header.md](../../planning/common/01-header.md)
 > 작성일: 2026-04-13
+> 갱신일: 2026-05-10 (Stock 타입을 [common/02-주식데이터.md](./02-주식데이터.md)와 통합)
 > 상태: 리뷰 중
 
 ## 컴포넌트 구조
@@ -89,10 +90,12 @@ const NAV_ITEMS = [
 
 | 속성 | 타입 | 필수 | 설명 |
 |------|------|------|------|
-| results | Stock[] | O | 검색 결과 목록 |
+| results | StockSearchResult[] | O | 검색 결과 목록 |
 | isLoading | boolean | O | 로딩 상태 |
 | isError | boolean | O | 에러 상태 |
-| onSelect | (stock: Stock) => void | O | 항목 선택 콜백 |
+| onSelect | (stock: StockSearchResult) => void | O | 항목 선택 콜백 |
+
+> `StockSearchResult = Pick<Stock, 'stockId' | 'name'>`. `Stock` 타입은 [common/02-주식데이터.md](./02-주식데이터.md)에서 정의된 `src/types/stock.ts`를 import 한다.
 
 **동작:**
 - `isLoading`이 `true`이면 로딩 표시
@@ -124,15 +127,16 @@ interface SearchRequest {
 
 **응답:**
 ```typescript
-interface Stock {
-  id: string;
-  name: string;
-}
+import type { Stock } from '@/types/stock';
+
+export type StockSearchResult = Pick<Stock, 'stockId' | 'name'>;
 
 interface SearchResponse {
-  stocks: Stock[];
+  stocks: StockSearchResult[];
 }
 ```
+
+> 검색 응답은 풀 `Stock`의 부분 집합. 향후 검색 결과에 `currentPrice`/`market` 등 컬럼이 추가되면 `Pick`에 필드를 더한다.
 
 **에러 처리:**
 - 네트워크/서버 에러: 드롭다운에 `검색 중 문제가 발생했습니다.` 표시
@@ -166,6 +170,8 @@ interface SearchResponse {
 
 ```
 src/
+├── types/
+│   └── stock.ts           # Stock, StockSearchResult (common/02에서 정의)
 ├── components/
 │   └── Header/
 │       ├── Header.tsx
@@ -180,8 +186,15 @@ src/
 │   ├── FeedPage.tsx
 │   └── ScreenerPage.tsx
 └── apis/
-    └── stocks.ts          # 검색 API 함수
+    └── stocks.ts          # 검색 API 함수 (Stock 타입은 src/types/stock.ts에서 import)
 ```
+
+## 변경 이력
+
+| 날짜 | 내용 |
+|------|------|
+| 2026-04-13 | 초안 작성 (리뷰 중) |
+| 2026-05-10 | `Stock` 타입을 [common/02-주식데이터.md](./02-주식데이터.md)와 통합. 기존 `{ id, name }`을 풀 `Stock`의 `Pick<'stockId' \| 'name'>`로 변경하여 도메인 일관성 확보. 기존 헤더 구현(`src/apis/stocks.ts`, `SearchDropdown.tsx`, `SearchBar.tsx`)도 `id` → `stockId`로 갱신 필요 |
 
 ## 체크리스트
 
