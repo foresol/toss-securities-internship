@@ -1,0 +1,69 @@
+name: 기획-개발 싱크 게이트
+
+# ADR-002 item 2 (자동 검문소) — 결정적 검사(2a)
+# src/** 가 바뀌었는데 docs/** 가 안 바뀌고 no-spec-change 라벨도 없으면 실패시켜 머지를 막는다.
+# ADR-001(#14, pr-body) 치명도 분리 원칙에 따라 pr-body 워크플로와 분리된 별도 워크플로이며,
+# 이 잡(src↔docs 싱크 검사)을 main Branch Protection의 required check로 등록해야 머지가 실제로 막힌다.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sync-gate:
+    name: src↔docs 싱크 검사
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 결정적 검사 (src 변경 시 docs 동반 변경 강제)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const pr = context.payload.pull_request;
+
+            // no-spec-change 라벨이 있으면 통과 (라벨 정당성 감사는 2b AI 검사가 별도로 맡는다)
+            const labels = (pr.labels || []).map((l) => l.name);
+            if (labels.includes('no-spec-change')) {
+              core.info('no-spec-change 라벨이 있어 싱크 검사를 건너뜁니다.');
+              return;
+            }
+
+            // base...head 변경 파일 (#14 pr-body 워크플로와 같은 git 플러밍 재사용)
+            const base = pr.base.sha;
+            const head = pr.head.sha;
+            const changed = execSync(`git diff --name-only ${base}...${head}`, {
+              encoding: 'utf8',
+            })
+              .split('\n')
+              .map((f) => f.trim())
+              .filter(Boolean);
+
+            const srcChanged = changed.some((f) => f.startsWith('src/'));
+            const docsChanged = changed.some((f) => f.startsWith('docs/'));
+
+            core.info(
+              `변경 파일 ${changed.length}개 — src/** 변경: ${srcChanged}, docs/** 변경: ${docsChanged}`
+            );
+
+            if (srcChanged && !docsChanged) {
+              core.setFailed(
+                'src/** 가 변경됐지만 docs/** 변경이 없고 no-spec-change 라벨도 없습니다. ' +
+                  '기획서/스펙에 변경을 반영(implement의 "기록=반영")하거나, ' +
+                  '문서 변경이 불필요하면 no-spec-change 라벨을 붙이세요.'
+              );
+              return;
+            }
+
+            core.info('기획-개발 싱크 검사 통과.');
