@@ -33,6 +33,8 @@
 
 **문서 분류**: FE 피처는 기획서(`docs/planning`)·FE 스펙(`docs/spec`)으로 기록하고, 도구·CI·자동화 작업은 ADR(`docs/adr`)로 기록한다. 도구 작업에는 위 기획서·스펙 단계를 적용하지 않는다. (ADR-002)
 
+**PR·머지 게이트**: 커밋 후 main 대상 PR을 올리면 싱크 게이트(`.github/workflows/sync-gate.yml`)가 검사한다. `src` 변경 + 문서 미변경이면 머지가 막히며, 기획서/스펙에 반영(기록=반영)하거나 — 동작 보존 변경이라 문서 영향이 없으면 민서가 `no-spec-change` 라벨을 붙여 통과시킨다. (ADR-002 item 2a)
+
 ## 스킬 규칙
 
 - 스킬은 `.claude/skills/<스킬명>/SKILL.md` 형태로 관리한다
